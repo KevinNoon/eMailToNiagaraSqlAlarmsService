@@ -321,9 +321,11 @@ function addFieldRow(prefill) {
   tr.appendChild(makeCell(removeBtn));
 
   function toggleMode() {
+    // Hide the unused input itself, not its <td> - hiding a <td> removes it from the row's
+    // flow and shifts every later cell left, misaligning the row with the <thead> above it.
     const isLiteral = modeSelect.value === "literal";
-    literalCell.style.display = isLiteral ? "" : "none";
-    [regexCell, sourceCell, valueMapCell, hintsCell, tzCell].forEach(c => c.style.display = isLiteral ? "none" : "");
+    literalInput.style.display = isLiteral ? "" : "none";
+    [regexInput, sourceSelect, valueMapArea, hintsInput, tzInput].forEach(el => el.style.display = isLiteral ? "none" : "");
   }
   modeSelect.addEventListener("change", toggleMode);
   toggleMode();
