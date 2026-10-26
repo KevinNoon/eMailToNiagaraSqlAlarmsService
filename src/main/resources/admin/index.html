@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>MailAlarmBridge - Client Rule Builder</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f6f7f9;
+    --panel: #ffffff;
+    --border: #d7dbe0;
+    --text: #1c2127;
+    --muted: #5b6471;
+    --accent: #2f6fed;
+    --ok: #1a7f37;
+    --err: #c1121f;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a;
+      --panel: #1d2127;
+      --border: #333842;
+      --text: #e6e9ee;
+      --muted: #9aa3b0;
+      --accent: #6ea2ff;
+      --ok: #3ddc84;
+      --err: #ff6b6b;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+  }
+  .panel h2 { font-size: 15px; margin: 0 0 12px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+  input[type=text], input[type=number], select, textarea {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13px;
+  }
+  textarea { font-family: var(--mono); }
+  .row { display: flex; gap: 16px; flex-wrap: wrap; }
+  .row > div { flex: 1; min-width: 180px; }
+  .inline { display: flex; align-items: center; gap: 8px; margin: 10px 0 4px; }
+  .inline label { margin: 0; }
+  button {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    padding: 7px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    margin-right: 8px;
+    margin-top: 10px;
+  }
+  button.secondary { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+  button.danger { background: transparent; color: var(--err); border: 1px solid var(--err); padding: 3px 8px; margin: 0; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; padding: 4px 6px; }
+  td { padding: 4px 6px; vertical-align: top; }
+  td input, td select, td textarea { font-size: 12px; padding: 4px 6px; }
+  .status { margin-top: 10px; font-size: 13px; min-height: 18px; }
+  .status.ok { color: var(--ok); }
+  .status.error { color: var(--err); }
+  .hint { color: var(--muted); font-size: 11px; margin-top: 4px; }
+  #yamlTextarea { width: 100%; min-height: 260px; }
+  .loopback-note {
+    display: inline-block;
+    font-size: 11px;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 6px;
+    margin-left: 8px;
+  }
+</style>
+</head>
+<body>
+
+<h1>MailAlarmBridge <span class="loopback-note">127.0.0.1 only</span></h1>
+<div class="subtitle">
+  Client Rule Builder - creates/edits the per-client YAML files under <code>rules/</code> that MailAlarmBridge
+  uses to match and extract alarms from incoming email. This page only talks to the MailAlarmBridge process
+  running on this machine; it is not reachable from any other host.
+</div>
+
+<div class="panel">
+  <h2>1. Load an existing rule, or build a new one below</h2>
+  <div class="row">
+    <div>
+      <label for="existingRulesSelect">Existing rule files</label>
+      <select id="existingRulesSelect"></select>
+    </div>
+    <div style="flex:0 0 auto; align-self:flex-end;">
+      <button id="loadBtn" class="secondary" type="button">Load for editing</button>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>2. Guided builder</h2>
+
+  <label for="clientId">Client ID</label>
+  <input type="text" id="clientId" placeholder="e.g. north-campus">
+
+  <div class="inline">
+    <input type="checkbox" id="enabled" checked>
+    <label for="enabled" style="margin:0">Enabled</label>
+  </div>
+
+  <label for="matchFrom">From addresses/domains (comma-separated; prefix a domain with <code>*.</code> to match subdomains)</label>
+  <input type="text" id="matchFrom" placeholder="alerts@example.com, *.example.com">
+
+  <label for="subjectRegex">Subject regex (optional, ANDed with From)</label>
+  <input type="text" id="subjectRegex" placeholder="^BMS ALARM NOTIFICATION">
+
+  <div class="row">
+    <div>
+      <label for="bodyFormat">Body format</label>
+      <select id="bodyFormat">
+        <option value="plain_text">plain_text</option>
+        <option value="html">html</option>
+        <option value="auto">auto</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="inline">
+    <input type="checkbox" id="multiAlarmOn">
+    <label for="multiAlarmOn" style="margin:0">This client can send multiple alarms in one email</label>
+  </div>
+  <div class="row" id="multiAlarmFields" style="display:none">
+    <div>
+      <label for="blockSeparatorRegex">Block separator regex (zero-width lookahead)</label>
+      <input type="text" id="blockSeparatorRegex" placeholder="(?=^Point:\s)">
+    </div>
+    <div style="max-width:120px">
+      <label for="minBlocks">Min blocks</label>
+      <input type="number" id="minBlocks" value="1" min="0">
+    </div>
+  </div>
+
+  <label>Fields</label>
+  <div class="hint">
+    Common keys: estate, site_name, point_name, point_value, alarm_class, alarm_state, message, timestamp,
+    normaltime, offnormaltime, handle. "literal" fields always produce the same value; "regex" fields extract
+    from the email using a named group <code>(?&lt;val&gt;...)</code>.
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>key</th><th>mode</th><th>literal value</th><th>regex</th><th>source</th>
+        <th>default</th><th>value_map (KEY=value per line)</th><th>date hints (comma-sep)</th><th>timezone</th><th></th>
+      </tr>
+    </thead>
+    <tbody id="fieldsBody"></tbody>
+  </table>
+  <button id="addFieldBtn" type="button" class="secondary">+ Add field</button>
+
+  <label for="handleStrategy">Handle (dedupe key sent to the target API)</label>
+  <select id="handleStrategy">
+    <option value="synthesize">Synthesize a deterministic hash from declared fields</option>
+    <option value="direct">Use a field's extracted value directly (declare a "handle" field above)</option>
+  </select>
+  <div id="handleFieldsWrap">
+    <label for="handleFields">Fields to hash, in order (comma-separated, matching field keys above)</label>
+    <input type="text" id="handleFields" placeholder="estate, point_name">
+  </div>
+
+  <label for="onboardingNote">Onboarding note (saved as a leading YAML comment - e.g. does this client ever send a "normal/cleared" follow-up email?)</label>
+  <textarea id="onboardingNote" rows="2" placeholder="e.g. No normal/cleared follow-up observed for this client - one-shot offnormal only."></textarea>
+
+  <button id="generateBtn" type="button">Generate YAML below</button>
+</div>
+
+<div class="panel">
+  <h2>3. Review &amp; save</h2>
+  <label for="fileNameInput">File name (under rules/)</label>
+  <input type="text" id="fileNameInput" placeholder="north-campus.yaml">
+  <label for="yamlTextarea">YAML</label>
+  <textarea id="yamlTextarea" spellcheck="false"></textarea>
+  <div>
+    <button id="saveBtn" type="button">Validate &amp; save</button>
+    <button id="downloadBtn" type="button" class="secondary">Download .yaml</button>
+  </div>
+  <div class="hint">
+    Saving writes the file directly into the running app's <code>rules/</code> directory. If
+    <code>rules.reload.on.change=true</code> (the default), MailAlarmBridge picks it up on its next poll
+    cycle with no restart needed.
+  </div>
+  <div id="statusMsg" class="status"></div>
+</div>
+
+<script>
+const COMMON_KEYS = ["estate","site_name","point_name","point_value","alarm_class","alarm_state",
+                      "message","timestamp","normaltime","offnormaltime","handle"];
+
+function val(id) { return document.getElementById(id).value; }
+function checked(id) { return document.getElementById(id).checked; }
+
+function setStatus(msg, isError) {
+  const el = document.getElementById("statusMsg");
+  el.textContent = msg;
+  el.className = "status " + (isError ? "error" : "ok");
+}
+
+function yamlQuote(str) {
+  return '"' + String(str == null ? "" : str).replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"';
+}
+
+function sanitizeFileName(clientId) {
+  return clientId.toLowerCase().replace(/[^a-z0-9_-]+/g, "-") + ".yaml";
+}
+
+function addFieldRow(prefill) {
+  const tbody = document.getElementById("fieldsBody");
+  const tr = document.createElement("tr");
+
+  const keyInput = document.createElement("input");
+  keyInput.className = "f-key";
+  keyInput.setAttribute("list", "commonKeysList");
+  keyInput.style.width = "120px";
+  keyInput.placeholder = "field key";
+  if (prefill && prefill.key) keyInput.value = prefill.key;
+
+  const modeSelect = document.createElement("select");
+  modeSelect.className = "f-mode";
+  ["literal", "regex"].forEach(m => {
+    const opt = document.createElement("option");
+    opt.value = m; opt.textContent = m;
+    modeSelect.appendChild(opt);
+  });
+  modeSelect.value = (prefill && prefill.mode) ? prefill.mode : "regex";
+
+  const literalInput = document.createElement("input");
+  literalInput.className = "f-literal";
+  literalInput.placeholder = "literal value";
+  literalInput.style.width = "120px";
+
+  const regexInput = document.createElement("input");
+  regexInput.className = "f-regex";
+  regexInput.placeholder = "e.g. Point:\\s*(?<val>.+)";
+  regexInput.style.width = "180px";
+
+  const sourceSelect = document.createElement("select");
+  sourceSelect.className = "f-source";
+  ["body", "subject", "from"].forEach(s => {
+    const opt = document.createElement("option");
+    opt.value = s; opt.textContent = s;
+    sourceSelect.appendChild(opt);
+  });
+
+  const defaultInput = document.createElement("input");
+  defaultInput.className = "f-default";
+  defaultInput.placeholder = "optional";
+  defaultInput.style.width = "80px";
+
+  const valueMapArea = document.createElement("textarea");
+  valueMapArea.className = "f-valuemap";
+  valueMapArea.rows = 2;
+  valueMapArea.style.width = "130px";
+  valueMapArea.placeholder = "ALARM=offnormal\nCLEAR=normal";
+
+  const hintsInput = document.createElement("input");
+  hintsInput.className = "f-hints";
+  hintsInput.placeholder = "MM/dd/yyyy HH:mm:ss";
+  hintsInput.style.width = "130px";
+
+  const tzInput = document.createElement("input");
+  tzInput.className = "f-timezone";
+  tzInput.placeholder = "America/Chicago";
+  tzInput.style.width = "120px";
+
+  const removeBtn = document.createElement("button");
+  removeBtn.type = "button";
+  removeBtn.className = "danger";
+  removeBtn.textContent = "Remove";
+  removeBtn.addEventListener("click", () => tr.remove());
+
+  function makeCell(el) {
+    const td = document.createElement("td");
+    td.appendChild(el);
+    return td;
+  }
+
+  const literalCell = makeCell(literalInput);
+  const regexCell = makeCell(regexInput);
+  const sourceCell = makeCell(sourceSelect);
+  const valueMapCell = makeCell(valueMapArea);
+  const hintsCell = makeCell(hintsInput);
+  const tzCell = makeCell(tzInput);
+
+  tr.appendChild(makeCell(keyInput));
+  tr.appendChild(makeCell(modeSelect));
+  tr.appendChild(literalCell);
+  tr.appendChild(regexCell);
+  tr.appendChild(sourceCell);
+  tr.appendChild(makeCell(defaultInput));
+  tr.appendChild(valueMapCell);
+  tr.appendChild(hintsCell);
+  tr.appendChild(tzCell);
+  tr.appendChild(makeCell(removeBtn));
+
+  function toggleMode() {
+    const isLiteral = modeSelect.value === "literal";
+    literalCell.style.display = isLiteral ? "" : "none";
+    [regexCell, sourceCell, valueMapCell, hintsCell, tzCell].forEach(c => c.style.display = isLiteral ? "none" : "");
+  }
+  modeSelect.addEventListener("change", toggleMode);
+  toggleMode();
+
+  tbody.appendChild(tr);
+}
+
+function buildYaml() {
+  const clientId = val("clientId").trim();
+  if (!clientId) { setStatus("client_id is required.", true); return; }
+
+  const fromList = val("matchFrom").split(",").map(s => s.trim()).filter(Boolean);
+  if (fromList.length === 0) { setStatus("At least one From address/domain is required.", true); return; }
+
+  const lines = [];
+  const onboardingNote = val("onboardingNote").trim();
+  if (onboardingNote) {
+    onboardingNote.split("\n").forEach(l => lines.push("# " + l));
+    lines.push("");
+  }
+
+  lines.push("client_id: " + clientId);
+  lines.push("enabled: " + (checked("enabled") ? "true" : "false"));
+  lines.push("");
+  lines.push("match:");
+  lines.push("  from: [" + fromList.map(yamlQuote).join(", ") + "]");
+  const subjectRegex = val("subjectRegex").trim();
+  if (subjectRegex) {
+    lines.push("  subject_regex: " + yamlQuote(subjectRegex));
+  }
+  lines.push("");
+  lines.push("body_format: " + val("bodyFormat"));
+  lines.push("");
+
+  if (checked("multiAlarmOn")) {
+    lines.push("multi_alarm:");
+    lines.push("  block_separator_regex: " + yamlQuote(val("blockSeparatorRegex").trim()));
+    lines.push("  min_blocks: " + (val("minBlocks").trim() || "1"));
+    lines.push("");
+  }
+
+  lines.push("fields:");
+  let anyField = false;
+  document.querySelectorAll("#fieldsBody tr").forEach(row => {
+    const key = row.querySelector(".f-key").value.trim();
+    if (!key) return;
+    anyField = true;
+    const mode = row.querySelector(".f-mode").value;
+    lines.push("  " + key + ":");
+    if (mode === "literal") {
+      lines.push("    literal: " + yamlQuote(row.querySelector(".f-literal").value));
+    } else {
+      lines.push("    regex: " + yamlQuote(row.querySelector(".f-regex").value));
+      const source = row.querySelector(".f-source").value;
+      if (source && source !== "body") {
+        lines.push("    source: " + source);
+      }
+      const valueMapRaw = row.querySelector(".f-valuemap").value.trim();
+      if (valueMapRaw) {
+        const pairs = valueMapRaw.split("\n").map(l => l.trim()).filter(Boolean).map(l => {
+          const idx = l.indexOf("=");
+          if (idx < 0) return null;
+          const k = l.substring(0, idx).trim();
+          const v = l.substring(idx + 1).trim();
+          return k + ": " + yamlQuote(v);
+        }).filter(Boolean);
+        if (pairs.length) {
+          lines.push("    value_map: {" + pairs.join(", ") + "}");
+        }
+      }
+      const hints = row.querySelector(".f-hints").value.trim();
+      if (hints) {
+        const hintList = hints.split(",").map(s => s.trim()).filter(Boolean).map(yamlQuote);
+        lines.push("    date_format_hints: [" + hintList.join(", ") + "]");
+      }
+      const tz = row.querySelector(".f-timezone").value.trim();
+      if (tz) {
+        lines.push("    timezone: " + yamlQuote(tz));
+      }
+    }
+    const def = row.querySelector(".f-default").value;
+    if (def !== "") {
+      lines.push("    default: " + yamlQuote(def));
+    }
+  });
+  if (!anyField) {
+    setStatus("Add at least one field.", true);
+    return;
+  }
+
+  if (val("handleStrategy") === "synthesize") {
+    const handleFields = val("handleFields").split(",").map(s => s.trim()).filter(Boolean);
+    if (handleFields.length === 0) {
+      setStatus("List at least one field to hash, or switch Handle to direct.", true);
+      return;
+    }
+    lines.push("");
+    lines.push("handle:");
+    lines.push("  strategy: synthesize");
+    lines.push("  fields: [" + handleFields.map(yamlQuote).join(", ") + "]");
+  }
+
+  document.getElementById("yamlTextarea").value = lines.join("\n") + "\n";
+  document.getElementById("fileNameInput").value = sanitizeFileName(clientId);
+  setStatus("YAML generated below - review, then Validate & save.", false);
+}
+
+async function refreshRuleList() {
+  const resp = await fetch("/api/rules");
+  const names = await resp.json();
+  const select = document.getElementById("existingRulesSelect");
+  select.innerHTML = "";
+  const placeholder = document.createElement("option");
+  placeholder.value = ""; placeholder.textContent = "(select a file)";
+  select.appendChild(placeholder);
+  names.forEach(n => {
+    const opt = document.createElement("option");
+    opt.value = n; opt.textContent = n;
+    select.appendChild(opt);
+  });
+}
+
+async function loadExisting() {
+  const file = val("existingRulesSelect");
+  if (!file) { setStatus("Pick a file to load first.", true); return; }
+  const resp = await fetch("/api/rules/raw?file=" + encodeURIComponent(file));
+  if (!resp.ok) { setStatus("Could not load " + file + " (HTTP " + resp.status + ")", true); return; }
+  document.getElementById("yamlTextarea").value = await resp.text();
+  document.getElementById("fileNameInput").value = file;
+  setStatus("Loaded " + file + " for editing.", false);
+}
+
+async function saveYaml() {
+  const fileName = val("fileNameInput").trim();
+  const yaml = document.getElementById("yamlTextarea").value;
+  if (!fileName) { setStatus("File name is required before saving.", true); return; }
+  if (!yaml.trim()) { setStatus("YAML content is empty.", true); return; }
+
+  try {
+    const resp = await fetch("/api/rules/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fileName: fileName, yaml: yaml })
+    });
+    const data = await resp.json();
+    if (resp.ok && data.status === "success") {
+      setStatus("Saved " + fileName + ". MailAlarmBridge will pick it up on its next rule-reload check.", false);
+      refreshRuleList();
+    } else {
+      setStatus("Error: " + (data.message || ("HTTP " + resp.status)), true);
+    }
+  } catch (e) {
+    setStatus("Request failed: " + e, true);
+  }
+}
+
+function downloadYaml() {
+  const fileName = val("fileNameInput").trim() || "rule.yaml";
+  const text = document.getElementById("yamlTextarea").value;
+  const blob = new Blob([text], { type: "text/yaml" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = fileName;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  const datalist = document.createElement("datalist");
+  datalist.id = "commonKeysList";
+  COMMON_KEYS.forEach(k => {
+    const opt = document.createElement("option");
+    opt.value = k;
+    datalist.appendChild(opt);
+  });
+  document.body.appendChild(datalist);
+
+  refreshRuleList();
+  addFieldRow();
+
+  document.getElementById("addFieldBtn").addEventListener("click", () => addFieldRow());
+  document.getElementById("generateBtn").addEventListener("click", buildYaml);
+  document.getElementById("saveBtn").addEventListener("click", saveYaml);
+  document.getElementById("loadBtn").addEventListener("click", loadExisting);
+  document.getElementById("downloadBtn").addEventListener("click", downloadYaml);
+  document.getElementById("multiAlarmOn").addEventListener("change", () => {
+    document.getElementById("multiAlarmFields").style.display = checked("multiAlarmOn") ? "" : "none";
+  });
+});
+</script>
+</body>
+</html>

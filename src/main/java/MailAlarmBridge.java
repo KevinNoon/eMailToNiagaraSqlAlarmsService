@@ -1,3 +1,4 @@
+import admin.AdminServer;
 import deadletter.DeadLetterHandler;
 import mail.MailboxPoller;
 import mail.ProcessedStateStore;
@@ -7,6 +8,7 @@ import rules.RuleLoader;
 import rules.RuleSet;
 import util.Utils;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -40,6 +42,18 @@ public class MailAlarmBridge {
         DeadLetterHandler deadLetterHandler = new DeadLetterHandler(
                 Utils.getAlertSmtpHost(), Utils.getAlertSmtpFrom(), Utils.getAlertSmtpTo(),
                 Utils.getAlertUnmatchedThresholdCount(), Utils.getAlertUnmatchedThresholdWindowMinutes());
+
+        if (Utils.isAdminEnabled()) {
+            try {
+                AdminServer adminServer = new AdminServer(Utils.getRulesDirectory());
+                adminServer.start(Utils.getAdminPort());
+            } catch (IOException e) {
+                // The admin page is an operator convenience, not on the critical poll path -
+                // a bind failure (e.g. port already in use) must not stop the app from running.
+                logger.warning("[MailAlarmBridge] Could not start admin page on port "
+                        + Utils.getAdminPort() + ": " + e.getMessage());
+            }
+        }
 
         logger.info("[MailAlarmBridge] Starting poll loop against " + Utils.getImapHost() + ":" + Utils.getImapPort()
                 + " folder=" + Utils.getImapFolder() + ", target API=" + Utils.getApiUrl());

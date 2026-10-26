@@ -130,4 +130,20 @@ public class RuleLoader {
             return RuleSet.fromMap((Map<String, Object>) loaded, file.getFileName().toString());
         }
     }
+
+    // Parses rule YAML text (not a file) and returns null if valid, or an error message if
+    // not - used by AdminServer to validate a rule before writing it to disk.
+    @SuppressWarnings("unchecked")
+    public static String validate(String yamlText) {
+        try {
+            Object loaded = new Yaml().load(yamlText);
+            if (!(loaded instanceof Map)) {
+                return "Top-level YAML content is not a mapping";
+            }
+            RuleSet.fromMap((Map<String, Object>) loaded, "(validation)");
+            return null;
+        } catch (Exception e) {
+            return e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
+        }
+    }
 }

@@ -39,6 +39,12 @@ api.retry.backoff.multiplier=2.0
 api.circuitbreaker.failure.threshold=5
 api.circuitbreaker.max.interval.seconds=1800
 
+# --- Admin page (client rule builder) ---
+# Loopback-only (127.0.0.1) - hardcoded regardless of config, never exposed on the network.
+# Browse to http://127.0.0.1:<admin.port>/ to create/edit rules/*.yaml through a form.
+admin.enabled=true
+admin.port=8081
+
 # --- Dead-letter / alerting ---
 alert.smtp.host=smtp.example.com
 alert.smtp.from=mailalarmbridge@example.com

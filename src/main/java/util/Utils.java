@@ -44,6 +44,9 @@ public class Utils {
     private static int alertUnmatchedThresholdCount;
     private static int alertUnmatchedThresholdWindowMinutes;
 
+    private static boolean adminEnabled;
+    private static int adminPort;
+
     public static boolean loadConfiguration() {
         return loadConfiguration("config.properties");
     }
@@ -91,6 +94,9 @@ public class Utils {
             alertUnmatchedThresholdCount = Integer.parseInt(prop.getProperty("alert.unmatched.threshold.count", "3"));
             alertUnmatchedThresholdWindowMinutes = Integer.parseInt(prop.getProperty("alert.unmatched.threshold.window.minutes", "15"));
 
+            adminEnabled = Boolean.parseBoolean(prop.getProperty("admin.enabled", "true"));
+            adminPort = Integer.parseInt(prop.getProperty("admin.port", "8081"));
+
             return true;
         } catch (IOException ex) {
             logger.warning("[Utils] Error reading config file: " + ex.getMessage());
@@ -130,4 +136,7 @@ public class Utils {
     public static String getAlertSmtpTo() { return alertSmtpTo; }
     public static int getAlertUnmatchedThresholdCount() { return alertUnmatchedThresholdCount; }
     public static int getAlertUnmatchedThresholdWindowMinutes() { return alertUnmatchedThresholdWindowMinutes; }
+
+    public static boolean isAdminEnabled() { return adminEnabled; }
+    public static int getAdminPort() { return adminPort; }
 }

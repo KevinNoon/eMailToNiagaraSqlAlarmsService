@@ -33,6 +33,16 @@ java -jar target/MailAlarmBridge-jar-with-dependencies.jar
 
 Runs an infinite poll loop at `mail.poll.interval.seconds`, logging to the console.
 
+## Admin Page (Client Rule Builder)
+
+While the app is running, browse to `http://127.0.0.1:8081/` (or whatever `admin.port` is set
+to) for a form-based builder that creates/edits the per-client `rules/*.yaml` files without
+hand-editing YAML. It is hardcoded to bind `127.0.0.1` regardless of configuration - it is not
+reachable from any other host, and has no separate login because of that. Saving a rule writes
+it straight into the running app's `rules/` directory; with `rules.reload.on.change=true` (the
+default) it takes effect on the next poll cycle with no restart. Set `admin.enabled=false` to
+turn the page off entirely.
+
 ## Security / Network Note
 
 Same posture as `NiagaraSQLAlarmServer`: `/api/endpoint` has **zero authentication**. Deploy
