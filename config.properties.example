@@ -1,0 +1,47 @@
+# --- Mailbox (IMAP) ---
+mail.imap.host=outlook.office365.com
+mail.imap.port=993
+mail.imap.ssl=true
+mail.imap.user=alarms-bridge@example.com
+mail.imap.password=changeme
+mail.imap.folder=INBOX
+mail.poll.interval.seconds=60
+mail.processed.strategy=FLAG_AND_LOCAL
+mail.processed.store.path=./data/processed-ids.log
+mail.unmatched.folder=Unmatched
+
+# Optional: move processed/unmatched emails to a folder instead of just flagging
+# in place. Off by default - it mutates a mailbox this app doesn't own and can
+# conflict with the client's own mail rules.
+mail.processed.move.enabled=false
+mail.processed.move.folder=Processed
+
+# Per-cycle cap on how many emails a single poll will process. Bounds API load
+# and log noise; any backlog beyond this cap is simply picked up next cycle.
+mail.poll.batch.cap=50
+
+# --- Rule engine ---
+rules.directory=./rules
+rules.reload.on.change=true
+rules.default.timezone=UTC
+
+# --- Target API (NiagaraSQLAlarmServer) ---
+api.url=http://localhost:5555/api/endpoint
+api.connect.timeout.ms=5000
+api.read.timeout.ms=10000
+api.retry.max.attempts=5
+api.retry.backoff.initial.ms=2000
+api.retry.backoff.multiplier=2.0
+
+# Circuit breaker: after this many consecutive fully-failed poll cycles (connection
+# failure or exhausted retries), the poll interval starts doubling - capped at
+# api.circuitbreaker.max.interval.seconds - until a POST succeeds again, then resets.
+api.circuitbreaker.failure.threshold=5
+api.circuitbreaker.max.interval.seconds=1800
+
+# --- Dead-letter / alerting ---
+alert.smtp.host=smtp.example.com
+alert.smtp.from=mailalarmbridge@example.com
+alert.smtp.to=ops-team@example.com
+alert.unmatched.threshold.count=3
+alert.unmatched.threshold.window.minutes=15

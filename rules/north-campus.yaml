@@ -1,0 +1,47 @@
+client_id: north-campus
+enabled: true
+
+# Onboarding note: no normal/cleared follow-up email has been observed from this client as
+# of onboarding - North Campus sends one-shot offnormal notifications only. Per the spec's
+# "per-client reality" decision, this is not an engineering problem to solve; a cleared
+# alarm here simply never gets a corresponding "normal" row unless this client's format
+# changes in the future.
+
+match:
+  from: ["alerts@northcampus-bms.com", "*.northcampus-bms.com"]
+  subject_regex: "^BMS ALARM NOTIFICATION"   # optional, ANDed with from
+
+body_format: plain_text                      # plain_text | html | auto
+
+multi_alarm:                                 # omit entirely for single-alarm emails
+  block_separator_regex: "(?=^Point:\\s)"
+  min_blocks: 1                              # 0 matched blocks -> dead-letter, not silently empty
+
+fields:
+  estate:
+    literal: "North Campus"                 # or regex+source if the email states it
+  point_name:
+    regex: "Point:\\s*(?<val>.+)"
+    source: body
+  point_value:
+    regex: "Value:\\s*(?<val>.+)"
+    source: body
+    default: ""
+  alarm_state:
+    regex: "Status:\\s*(?<val>\\w+)"
+    source: body
+    value_map: {ALARM: "offnormal", CLEAR: "normal"}
+    default: "offnormal"
+  message:
+    regex: "Description:\\s*(?<val>.+)"
+    source: body
+    default: ""
+  timestamp:
+    regex: "Time:\\s*(?<val>.+)"
+    source: body
+    date_format_hints: ["MM/dd/yyyy HH:mm:ss"]
+    timezone: "America/Chicago"              # naive local time -> converted to UTC
+
+handle:
+  strategy: synthesize                       # this client has no stable per-point ID
+  fields: ["estate", "point_name"]           # NOT point_value/message - those vary per occurrence

@@ -1,0 +1,14 @@
+From: alerts@northcampus-bms.com
+To: alarms-bridge@example.com
+Subject: BMS ALARM NOTIFICATION
+Date: Wed, 29 Jul 2026 14:05:05 -0500
+Message-ID: <north-campus-offnormal-001@northcampus-bms.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+
+BMS ALARM NOTIFICATION
+Point: AHU-3 Supply Temp
+Value: 91.2 F
+Status: ALARM
+Description: High supply air temperature
+Time: 07/29/2026 14:05:00
